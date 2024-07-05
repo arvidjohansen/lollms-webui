@@ -1,12 +1,16 @@
 <template>
-  <div class="w-full h-full overflow-y-auto scrollbar-thin scrollbar-track-bg-light-tone scrollbar-thumb-bg-light-tone-panel hover:scrollbar-thumb-primary dark:scrollbar-track-bg-dark-tone dark:scrollbar-thumb-bg-dark-tone-panel dark:hover:scrollbar-thumb-primary active:scrollbar-thumb-secondary" v-html="evaluatedCode" :key="componentKey">
+  <div :id="`ui_${componentKey}`" class="w-full h-auto overflow-y-auto scrollbar-thin scrollbar-track-bg-light-tone scrollbar-thumb-bg-light-tone-panel hover:scrollbar-thumb-primary dark:scrollbar-track-bg-dark-tone dark:scrollbar-thumb-bg-dark-tone-panel dark:hover:scrollbar-thumb-primary active:scrollbar-thumb-secondary" v-html="evaluatedCode" :key="componentKey">
   </div>
 </template>
 
 <script>
 export default {
   props: {
-    code: String, // The HTML/CSS/JavaScript code as a prop
+    code: {
+            type: String,
+            required: true,
+            default: "",
+        },
   },
   data() {
     return {
@@ -17,8 +21,7 @@ export default {
   watch: {
     code: {
       handler(newCode) {
-        // Extract and evaluate script tags from the new code
-        console.log("Code changed")
+        console.log("Code changed");
         this.evaluateScriptTags(newCode);
         this.componentKey++;
       },
@@ -44,7 +47,11 @@ export default {
 
       // Set the evaluated code to the modified HTML
       this.evaluatedCode = tempDiv.innerHTML;
-      console.log("evaluated code: " + this.evaluatedCode)
+
+      // Force a re-render by updating the component key
+      this.$nextTick(() => {
+        this.componentKey++;
+      });
     },
   },
 };

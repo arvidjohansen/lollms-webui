@@ -16,10 +16,6 @@
             </div>
             <!-- SAVE AND RESET -->
             <div v-if="!showConfirmation" class="flex gap-3 flex-1 items-center ">
-                <button title="Save configuration" class="text-2xl hover:text-secondary duration-75 active:scale-90"
-                    @click="showConfirmation = true">
-                    <i data-feather="save"></i>
-                </button>
                 <button title="Reset configuration" class="text-2xl hover:text-secondary duration-75 active:scale-90"
                     @click="reset_configuration()">
                     <i data-feather="refresh-ccw"></i>
@@ -45,23 +41,29 @@
                     >
                     <i data-feather="refresh-ccw"></i>
                     </button>
-                    <button
+                    <button v-if="has_updates"
                     title="Upgrade program "
                     class="text-2xl hover:text-secondary duration-75 active:scale-90"
                     @click="api_post_req('update_software').then((res)=>{if(res.status){this.$store.state.toast.showToast('Success!', 4, true)}else{this.$store.state.toast.showToast('Success!', 4, true)}})"
                     >
                     <i data-feather="arrow-up-circle"></i>
-                    
-                    <div  v-if="has_updates" >
-                        <i data-feather="alert-circle"></i>
-                    </div>
-                    </button>
+                    <i data-feather="alert-circle"></i>
+=                   </button>
                 <div class="flex gap-3 items-center">
                     <div v-if="settingsChanged" class="flex gap-3 items-center">
-                        <p class="text-red-600 font-bold">Apply changes:</p>
                         <button v-if="!isLoading" class="text-2xl hover:text-secondary duration-75 active:scale-90"
                             title="Apply changes" type="button" @click.stop="applyConfiguration()">
-                            <i data-feather="check"></i>
+                            <div class="flex flex-row">
+                                <p class="text-green-600 font-bold hover:text-green-300 ml-4 pl-4 mr-4 pr-4">Apply changes:</p>
+                                <i data-feather="check"></i>
+                            </div>
+                        </button>
+                        <button v-if="!isLoading" class="text-2xl hover:text-secondary duration-75 active:scale-90"
+                            title="Cancel changes" type="button" @click.stop="cancelConfiguration()">
+                            <div class="flex flex-row">
+                                <p class="text-red-600 font-bold hover:text-red-300 ml-4 pl-4 mr-4 pr-4">Cancel changes:</p>
+                                <i data-feather="x"></i>
+                            </div>
                         </button>
                     </div>
 
@@ -328,6 +330,40 @@
                                             id="activate_debug"
                                             required
                                             v-model="configFile.debug"
+                                            @change="settingsChanged=true"
+                                            class="m-2 h-50 w-50 py-1 border border-gray-300 rounded  dark:bg-gray-600 "
+                                            >
+                                            </div>
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td style="min-width: 200px;">
+                                            <label for="debug_show_final_full_prompt" class="text-sm font-bold" style="margin-right: 1rem;">Show final full prompt in console:</label>
+                                        </td>
+                                        <td>
+                                            <div class="flex flex-row">
+                                                <input
+                                            type="checkbox"
+                                            id="debug_show_final_full_prompt"
+                                            required
+                                            v-model="configFile.debug_show_final_full_prompt"
+                                            @change="settingsChanged=true"
+                                            class="m-2 h-50 w-50 py-1 border border-gray-300 rounded  dark:bg-gray-600 "
+                                            >
+                                            </div>
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td style="min-width: 200px;">
+                                            <label for="debug_show_chunks" class="text-sm font-bold" style="margin-right: 1rem;">Show chunks in console:</label>
+                                        </td>
+                                        <td>
+                                            <div class="flex flex-row">
+                                                <input
+                                            type="checkbox"
+                                            id="debug_show_chunks"
+                                            required
+                                            v-model="configFile.debug_show_chunks"
                                             @change="settingsChanged=true"
                                             class="m-2 h-50 w-50 py-1 border border-gray-300 rounded  dark:bg-gray-600 "
                                             >
@@ -966,8 +1002,9 @@
                                 @change="settingsChanged=true"
                                 class="w-full mt-1 px-2 py-1 border border-gray-300 rounded dark:bg-gray-600"
                                 >
-                                <button @click="select_folder(index)" class="ml-2 px-2 py-1 bg-blue-500 text-white rounded">Select Folder</button>
-                                <button @click="removeDataSource(index)" class="ml-2 px-2 py-1 bg-red-500 text-white rounded">Remove</button>
+                                <button @click="vectorize_folder(index)" class="w-500 ml-2 px-2 py-1 bg-green-500 text-white hover:bg-green-300 rounded">(Re)Vectorize</button>
+                                <button @click="select_folder(index)" class="w-500 ml-2 px-2 py-1 bg-blue-500 text-white hover:bg-green-300 rounded">Select Folder</button>
+                                <button @click="removeDataSource(index)" class="ml-2 px-2 py-1 bg-red-500 text-white hover:bg-green-300 rounded">Remove</button>
                             </div>
                             <button @click="addDataSource" class="mt-2 px-2 py-1 bg-blue-500 text-white rounded">Add Data Source</button>
                             </td>
@@ -989,13 +1026,29 @@
                                     <option value="word2vec">Word2Vec Vectorizer</option>
                                 </select>
                             </td>
-                            </tr>
+                        </tr>
+                        <tr>
+                            <td style="min-width: 200px;">
+                                <label for="rag_vectorizer_model" class="text-sm font-bold" style="margin-right: 1rem;">RAG Vectorizer model:</label>
+                            </td>
+                            <td>
+                                <select
+                                id="rag_vectorizer_model"
+                                required
+                                v-model="configFile.rag_vectorizer_model"
+                                @change="settingsChanged=true"
+                                class="w-full mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                                    <option value="bert-base-nli-mean-tokens">bert-base-nli-mean-tokens</option>
+                                </select>
+                            </td>
+                            </tr>                        
                             <tr>
                             <td style="min-width: 200px;">
                                 <label for="rag_chunk_size" class="text-sm font-bold" style="margin-right: 1rem;">RAG chunk size:</label>
                             </td>
                             <td>
-                                <input id="rag_chunk_size" v-model="configFile.data_vectorization_chunk_size"
+                                <input id="rag_chunk_size" v-model="configFile.rag_chunk_size"
                                 @change="settingsChanged=true"
                                 type="range" min="2" max="64000" step="1"
                                 class="flex-none h-2 mt-14 mb-2 w-full bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700  focus:ring-blue-500 focus:border-blue-500  dark:border-gray-600 dark:placeholder-gray-400  dark:focus:ring-blue-500 dark:focus:border-blue-500">
@@ -1006,13 +1059,31 @@
                                 class="w-full mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
                                 >
                             </td>
-                            </tr>                                          
+                            </tr> 
+                            <tr>
+                            <td style="min-width: 200px;">
+                                <label for="rag_overlap" class="text-sm font-bold" style="margin-right: 1rem;">RAG overlap size:</label>
+                            </td>
+                            <td>
+                                <input id="rag_overlap" v-model="configFile.rag_overlap"
+                                @change="settingsChanged=true"
+                                type="range" min="0" max="64000" step="1"
+                                class="flex-none h-2 mt-14 mb-2 w-full bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700  focus:ring-blue-500 focus:border-blue-500  dark:border-gray-600 dark:placeholder-gray-400  dark:focus:ring-blue-500 dark:focus:border-blue-500">
+
+                                <input v-model="configFile.rag_overlap"
+                                type="number"
+                                @change="settingsChanged=true"
+                                class="w-full mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                            </td>
+                            </tr>                                  
+                                                                
                             <tr>
                             <td style="min-width: 200px;">
                                 <label for="rag_n_chunks" class="text-sm font-bold" style="margin-right: 1rem;">RAG number of chunks:</label>
                             </td>
                             <td>
-                                <input id="rag_n_chunks" v-model="configFile.data_vectorization_chunk_size"
+                                <input id="rag_n_chunks" v-model="configFile.rag_n_chunks"
                                 @change="settingsChanged=true"
                                 type="range" min="2" max="64000" step="1"
                                 class="flex-none h-2 mt-14 mb-2 w-full bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700  focus:ring-blue-500 focus:border-blue-500  dark:border-gray-600 dark:placeholder-gray-400  dark:focus:ring-blue-500 dark:focus:border-blue-500">
@@ -1023,7 +1094,80 @@
                                 class="w-full mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
                                 >
                             </td>
-                            </tr>  
+                            </tr>                                          
+                            <tr>
+                            <td style="min-width: 200px;">
+                                <label for="rag_clean_chunks" class="text-sm font-bold" style="margin-right: 1rem;">Clean chunks:</label>
+                            </td>
+                            <td>
+                                <input v-model="configFile.rag_clean_chunks"
+                                type="checkbox"
+                                @change="settingsChanged=true"
+                                class="w-5 mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                            </td>
+                            </tr>                      
+                            <tr>
+                            <td style="min-width: 200px;">
+                                <label for="rag_follow_subfolders" class="text-sm font-bold" style="margin-right: 1rem;">Follow subfolders:</label>
+                            </td>
+                            <td>
+                                <input v-model="configFile.rag_follow_subfolders"
+                                type="checkbox"
+                                @change="settingsChanged=true"
+                                class="w-5 mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                            </td>
+                            </tr>                                              
+                            <tr>
+                            <td style="min-width: 200px;">
+                                <label for="rag_check_new_files_at_startup" class="text-sm font-bold" style="margin-right: 1rem;">Check for new files at startup:</label>
+                            </td>
+                            <td>
+                                <input v-model="configFile.rag_check_new_files_at_startup"
+                                type="checkbox"
+                                @change="settingsChanged=true"
+                                class="w-5 mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                            </td>
+                            </tr>
+                            <tr>
+                            <td style="min-width: 200px;">
+                                <label for="rag_preprocess_chunks" class="text-sm font-bold" style="margin-right: 1rem;">Preprocess chunks:</label>
+                            </td>
+                            <td>
+                                <input v-model="configFile.rag_preprocess_chunks"
+                                type="checkbox"
+                                @change="settingsChanged=true"
+                                class="w-5 mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                            </td>
+                            </tr>    
+                            <tr>
+                            <td style="min-width: 200px;">
+                                <label for="rag_activate_multi_hops" class="text-sm font-bold" style="margin-right: 1rem;">Activate multi hops RAG:</label>
+                            </td>
+                            <td>
+                                <input v-model="configFile.rag_activate_multi_hops"
+                                type="checkbox"
+                                @change="settingsChanged=true"
+                                class="w-5 mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                            </td>
+                            </tr>    
+                            <tr>
+                            <td style="min-width: 200px;">
+                                <label for="contextual_summary" class="text-sm font-bold" style="margin-right: 1rem;">Use contextual summary instead of rag (consumes alot of tokens and may be very slow but efficient, useful for summary and global questions that RAG can't do):</label>
+                            </td>
+                            <td>
+                                <input v-model="configFile.contextual_summary"
+                                type="checkbox"
+                                @change="settingsChanged=true"
+                                class="w-5 mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                >
+                            </td>
+                            </tr>
+                            
                         </table>
                     </Card>
                     <Card title="Data Vectorization" :is_subcard="true" class="pb-2  m-2">
@@ -2582,6 +2726,44 @@
                                     </div>
                                 </td>
                                 </tr> 
+                                <tr>
+                                <td style="min-width: 200px;">
+                                    <label for="midjourney_timeout" class="text-sm font-bold" style="margin-right: 1rem;">request timeout(s):</label>
+                                </td>
+                                <td>
+                                    <div class="flex flex-row">
+                                    <input
+                                    type="number"
+                                    min=10
+                                    max=2048
+                                    id="midjourney_timeout"
+                                    required
+                                    v-model="configFile.midjourney_timeout"
+                                    @change="settingsChanged=true"
+                                    class="mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                    >
+                                    </div>
+                                </td>
+                                </tr> 
+                                <tr>
+                                <td style="min-width: 200px;">
+                                    <label for="midjourney_retries" class="text-sm font-bold" style="margin-right: 1rem;">number of retries:</label>
+                                </td>
+                                <td>
+                                    <div class="flex flex-row">
+                                    <input
+                                    type="number"
+                                    min=0
+                                    max=2048
+                                    id="midjourney_retries"
+                                    required
+                                    v-model="configFile.midjourney_retries"
+                                    @change="settingsChanged=true"
+                                    class="mt-1 px-2 py-1 border border-gray-300 rounded  dark:bg-gray-600"
+                                    >
+                                    </div>
+                                </td>
+                                </tr> 
                             </table>                                
                         </Card>
                         <Card title="Dall-E" :is_subcard="true" class="pb-2  m-2">
@@ -3530,6 +3712,7 @@
                                         :on-reinstall="onPersonalityReinstall"
                                         :on-settings="onSettingsPersonality"
                                         :on-copy-personality-name="onCopyPersonalityName"
+                                        :on-copy-to_custom="onCopyToCustom"
                                         :on-open-folder="handleOpenFolder"
                                         />
                                 </TransitionGroup>
@@ -4000,6 +4183,9 @@ export default {
             this.$store.state.config.rag_databases.splice(index, 1);
             this.settingsChanged = true;
             },
+            async vectorize_folder(index){
+                await axios.post('/vectorize_folder', {client_id:this.$store.state.client_id, db_path:this.$store.state.config.rag_databases[index]}, this.posts_headers)
+            },            
             async select_folder(index){
                 try{
                     socket.on("rag_db_added", (infos)=>{
@@ -4774,6 +4960,9 @@ export default {
             this.$store.state.toast.showToast("Copied name to clipboard!", 4, true)
             navigator.clipboard.writeText(personality.name);
         },
+        async onCopyToCustom(pers) {
+            await axios.post("/copy_to_custom_personas",{client_id:this.$store.state.client_id, category: pers.personality.category, name: pers.personality.name})
+        },
         async handleOpenFolder(pers){
             await axios.post("/open_personality_folder",{client_id:this.$store.state.client_id, personality_folder: pers.personality.folder})
         },
@@ -5451,6 +5640,10 @@ export default {
             })
 
             return res
+        },
+        async cancelConfiguration() {
+            await this.$store.dispatch('refreshConfig');
+            this.settingsChanged=false
         },
         applyConfiguration() {
             this.isLoading = true;
